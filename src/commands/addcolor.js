@@ -8,8 +8,8 @@ export const data = {
     description: "Add a new color role",
     options: [
         { name: "name", description: "Internal color name for use in list", type: 3, required: true },
-        { name: "label", description: "Button label (emoji or text)", type: 3, required: false },
-        { name: "role", description: "Role to assign", type: 8, required: true }
+        { name: "role", description: "Role to assign", type: 8, required: true },
+        { name: "label", description: "Button label (emoji or text)", type: 3, required: false }
     ]
 };
 
