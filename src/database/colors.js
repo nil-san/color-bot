@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS color_roles (
     name TEXT,
     role_id TEXT,
     label TEXT,
+    order_index INTEGER,
     PRIMARY KEY (guild_id, name)
 )
 `).run();
@@ -24,16 +25,25 @@ CREATE TABLE IF NOT EXISTS color_panels (
 // ---------- COLORS ----------
 export function getColors(guildId) {
     return db.prepare(
-        "SELECT * FROM color_roles WHERE guild_id = ?"
+        "SELECT * FROM color_roles WHERE guild_id = ? ORDER BY order_index ASC"
     ).all(guildId);
 }
 
 export function addColor(guildId, name, roleId, label) {
     try {
+        const row = db.prepare(`
+            SELECT MAX(order_index) AS max
+            FROM color_roles
+            WHERE guild_id = ?
+        `).get(guildId);
+
+        const nextOrder = (row?.max ?? -1) + 1;
+
         db.prepare(`
-            INSERT INTO color_roles (guild_id, name, role_id, label)
-            VALUES (?, ?, ?, ?)
-        `).run(guildId, name, roleId, label || name);
+            INSERT INTO color_roles (guild_id, name, role_id, label, order_index)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(guildId, name, roleId, label || name, nextOrder);
+
         return true;
     } catch (err) {
         if (err.code === "SQLITE_CONSTRAINT_PRIMARYKEY") return false;
