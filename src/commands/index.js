@@ -4,6 +4,7 @@ import * as listcolors from "./listcolors.js";
 import * as colors from "./colors.js";
 import * as clearcolors from "./clearcolors.js";
 import * as editcolor from "./editcolor.js";
+import * as sendcolorlist from "./sendcolorlist.js"
 
 export const commandList = [
     addcolor,
@@ -11,7 +12,8 @@ export const commandList = [
     listcolors,
     colors,
     clearcolors,
-    editcolor
+    editcolor,
+    sendcolorlist
 ];
 
 export const commandMap = {
@@ -20,5 +22,6 @@ export const commandMap = {
     listcolors,
     colors,
     clearcolors,
-    editcolor
+    editcolor,
+    sendcolorlist
 };
