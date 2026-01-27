@@ -35,7 +35,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     // Measure widest text in this chunk
     let maxTextWidth = 0;
     colors.forEach((color, index) => {
-        const text = `${offset + index + 1}. ${color.label ?? color.name}`;
+        const text = `${offset + index + 1}. ${color.name}`;
         const textWidth = ctx.measureText(text).width;
         if (textWidth > maxTextWidth) maxTextWidth = textWidth;
     });
@@ -63,7 +63,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
                 ? role.hexColor
                 : "#ffffff";
 
-        const text = `${offset + index + 1}. ${color.label ?? color.name}`;
+        const text = `${offset + index + 1}. ${color.name}`;
 
         // Shadow for readability
         ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
