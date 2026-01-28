@@ -1,13 +1,23 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
-const dbPath = path.resolve("data/colors.db");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const dbPath = path.join(__dirname, "..", "..", "data", "colors.db");
 
 // Ensure directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-const db = new Database(dbPath);
+let db;
+
+if (!globalThis.__COLOR_DB__) {
+    globalThis.__COLOR_DB__ = new Database(dbPath);
+}
+
+db = globalThis.__COLOR_DB__;
 
 // ---------- TABLES ----------
 db.prepare(`
@@ -71,19 +81,45 @@ export function addColor(guildId, name, roleId, label) {
             VALUES (?, ?, ?, ?, ?)
         `).run(guildId, name, roleId, label || name, nextOrder);
 
-        return true;
+        return { ok: true };
     } catch (err) {
-        if (err.code === "SQLITE_CONSTRAINT_PRIMARYKEY") return false;
-        throw err;
+        if (err.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
+            return { ok: false, reason: "NAME_EXISTS" };
+        }
+
+        if (err.code === "SQLITE_CONSTRAINT_UNIQUE") {
+            return { ok: false, reason: "ROLE_ALREADY_USED" };
+        }
+
+        throw err; // real error
     }
 }
 
-export function updateColor(guildId, oldName, roleId, label, newName = oldName) {
+export function updateColor(guildId, oldName, roleId, label, newName) {
+    // Fetch existing color
+    const existing = db.prepare(`
+        SELECT name, role_id, label
+        FROM color_roles
+        WHERE guild_id = ? AND name = ?
+    `).get(guildId, oldName);
+
+    if (!existing) return false;
+
+    const finalName  = newName ?? existing.name;
+    const finalRole  = roleId ?? existing.role_id;
+    const finalLabel = label ?? existing.label;
+
     const result = db.prepare(`
         UPDATE color_roles
         SET name = ?, role_id = ?, label = ?
         WHERE guild_id = ? AND name = ?
-    `).run(newName, roleId, label, guildId, oldName);
+    `).run(
+        finalName,
+        finalRole,
+        finalLabel,
+        guildId,
+        oldName
+    );
 
     return result.changes > 0;
 }
@@ -290,4 +326,8 @@ export function clearWarningsForRole(guildId, roleId) {
         DELETE FROM warned_roles
         WHERE guild_id = ? AND role_id = ?
     `).run(guildId, roleId);
+}
+
+export function closeDatabase() {
+    db.close();
 }

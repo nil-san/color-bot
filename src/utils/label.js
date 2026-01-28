@@ -1,4 +1,3 @@
-// utils/label.js
 
 /**
  * Validates a label for color buttons.
