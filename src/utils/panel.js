@@ -96,16 +96,24 @@ function buildButtonRows(colors) {
             .setCustomId(`color_${encodeURIComponent(c.name)}`)
             .setStyle(ButtonStyle.Secondary);
 
-        if (c.label) {
-            const parsed = parseLabel(c.label);
-            if (parsed.type === "custom") {
-                button.setEmoji({ id: parsed.id });
-            } else {
-                button.setLabel(parsed.name);
-            }
+if (c.label) {
+    const parsed = parseLabel(c.label);
+
+    if (parsed) {
+        if (parsed.type === "custom") {
+            button.setEmoji({ id: parsed.id });
+            button.setLabel(" "); // required safety for emoji-only buttons
         } else {
-            button.setLabel(c.name.toUpperCase());
+            button.setLabel(parsed.name);
         }
+    } else {
+        // Invalid label → fallback safely
+        button.setLabel(c.name.toUpperCase());
+    }
+} else {
+    button.setLabel(c.name.toUpperCase());
+}
+
 
         return button;
     });

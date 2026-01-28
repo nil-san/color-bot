@@ -1,6 +1,13 @@
 import Database from "better-sqlite3";
+import path from "node:path";
+import fs from "node:fs";
 
-const db = new Database("colors.db");
+const dbPath = path.resolve("data/colors.db");
+
+// Ensure directory exists
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+const db = new Database(dbPath);
 
 // ---------- TABLES ----------
 db.prepare(`
@@ -14,11 +21,31 @@ CREATE TABLE IF NOT EXISTS color_roles (
 )
 `).run();
 
+// Ensure order_index is unique per guild (data integrity safety net)
+db.prepare(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_color_roles_order
+ON color_roles (guild_id, order_index)
+`).run();
+
+// Ensure a role can only be used once per guild
+db.prepare(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_color_roles_role
+ON color_roles (guild_id, role_id)
+`).run();
+
 db.prepare(`
 CREATE TABLE IF NOT EXISTS color_panels (
     guild_id TEXT PRIMARY KEY,
     channel_id TEXT,
     message_id TEXT
+)
+`).run();
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS warned_roles (
+    guild_id TEXT,
+    role_id TEXT,
+    PRIMARY KEY (guild_id, role_id)
 )
 `).run();
 
@@ -51,19 +78,41 @@ export function addColor(guildId, name, roleId, label) {
     }
 }
 
-export function updateColor(guildId, name, roleId, label) {
+export function updateColor(guildId, oldName, roleId, label, newName = oldName) {
     const result = db.prepare(`
         UPDATE color_roles
-        SET role_id = ?, label = ?
+        SET name = ?, role_id = ?, label = ?
         WHERE guild_id = ? AND name = ?
-    `).run(roleId, label, guildId, name);
+    `).run(newName, roleId, label, guildId, oldName);
+
     return result.changes > 0;
 }
 
 export function removeColor(guildId, name) {
-    return db.prepare(
-        "DELETE FROM color_roles WHERE guild_id = ? AND name = ?"
-    ).run(guildId, name);
+    const row = db.prepare(`
+        SELECT order_index
+        FROM color_roles
+        WHERE guild_id = ? AND name = ?
+    `).get(guildId, name);
+
+    if (!row) return { changes: 0 };
+
+    const tx = db.transaction(() => {
+        db.prepare(`
+            DELETE FROM color_roles
+            WHERE guild_id = ? AND name = ?
+        `).run(guildId, name);
+
+        db.prepare(`
+            UPDATE color_roles
+            SET order_index = order_index - 1
+            WHERE guild_id = ?
+              AND order_index > ?
+        `).run(guildId, row.order_index);
+    });
+
+    tx();
+    return { changes: 1 };
 }
 
 export function clearColors(guildId) {
@@ -183,4 +232,62 @@ export function clearPanel(guildId) {
     return db.prepare(
         "DELETE FROM color_panels WHERE guild_id = ?"
     ).run(guildId);
+}
+
+// WARNED ROLES
+export function isRoleWarned(guildId, roleId) {
+    return !!db.prepare(
+        "SELECT 1 FROM warned_roles WHERE guild_id = ? AND role_id = ?"
+    ).get(guildId, roleId);
+}
+
+export function markRoleWarned(guildId, roleId) {
+    db.prepare(
+        "INSERT OR IGNORE INTO warned_roles (guild_id, role_id) VALUES (?, ?)"
+    ).run(guildId, roleId);
+}
+
+export function clearRoleWarning(guildId, roleId) {
+    db.prepare(
+        "DELETE FROM warned_roles WHERE guild_id = ? AND role_id = ?"
+    ).run(guildId, roleId);
+}
+
+export function removeColorsByRole(guildId, roleId) {
+    const rows = db.prepare(`
+        SELECT name, order_index
+        FROM color_roles
+        WHERE guild_id = ? AND role_id = ?
+        ORDER BY order_index ASC
+    `).all(guildId, roleId);
+
+    if (!rows.length) return 0;
+
+    const tx = db.transaction(() => {
+        for (const row of rows) {
+            // Delete the color
+            db.prepare(`
+                DELETE FROM color_roles
+                WHERE guild_id = ? AND role_id = ?
+            `).run(guildId, roleId);
+
+            // Close order_index gap
+            db.prepare(`
+                UPDATE color_roles
+                SET order_index = order_index - 1
+                WHERE guild_id = ?
+                  AND order_index > ?
+            `).run(guildId, row.order_index);
+        }
+    });
+
+    tx();
+    return rows.length;
+}
+
+export function clearWarningsForRole(guildId, roleId) {
+    db.prepare(`
+        DELETE FROM warned_roles
+        WHERE guild_id = ? AND role_id = ?
+    `).run(guildId, roleId);
 }

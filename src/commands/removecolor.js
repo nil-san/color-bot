@@ -1,14 +1,20 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { removeColor } from "../database/colors.js";
 import { requireManageRoles } from "../utils/permissions.js";
 import { refreshColorPanel } from "../utils/panel.js";
 
-export const data = {
-    name: "removecolor",
-    description: "Remove a color role",
-    options: [{ name: "name", type: 3, description: "Color name", required: true }]
-};
+export const data = new SlashCommandBuilder()
+    .setName("removecolor")
+    .setDescription("Remove a color role")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+    .addStringOption(option =>
+        option
+        .setName("name")
+        .setDescription("Color name")
+        .setRequired(true)
+    );
 
-export async function execute(interaction) {
+    export async function execute(interaction) {
     if (!requireManageRoles(interaction))
         return interaction.reply({ content: "❌ Missing Manage Roles.", flags: 64 });
 

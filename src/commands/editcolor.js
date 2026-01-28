@@ -1,60 +1,101 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { getColors, updateColor } from "../database/colors.js";
 import { requireManageRoles } from "../utils/permissions.js";
 import { refreshColorPanel } from "../utils/panel.js";
 import { parseLabel } from "../utils/label.js";
 
-export const data = {
-    name: "editcolor",
-    description: "Edit an existing color",
-    options: [
-        { name: "old_name", type: 3, description: "Current color name to edit", required: true },
-        { name: "new_name", type: 3, description: "New color name", required: false },
-        { name: "label", type: 3, description: "New button label (emoji or text)", required: false },
-        { name: "role", type: 8, description: "New role to assign", required: false }
-    ]
-};
+export const data = new SlashCommandBuilder()
+  .setName("editcolor")
+  .setDescription("Edit an existing color")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+  .addStringOption(option =>
+    option
+      .setName("old_name")
+      .setDescription("Current color name to edit")
+      .setRequired(true)
+  )
+  .addStringOption(option =>
+    option
+      .setName("new_name")
+      .setDescription("New color name")
+      .setRequired(false)
+  )
+  .addStringOption(option =>
+    option
+      .setName("label")
+      .setDescription("New button label (emoji or text)")
+      .setRequired(false)
+  )
+  .addRoleOption(option =>
+    option
+      .setName("role")
+      .setDescription("New role to assign")
+      .setRequired(false)
+  );
 
 export async function execute(interaction) {
     if (!requireManageRoles(interaction)) {
-        return interaction.reply({ content: "❌ Missing Manage Roles.", flags: 64 });
+        return interaction.reply({
+            content: "❌ Missing Manage Roles.",
+            flags: 64
+        });
     }
 
-    const oldName = interaction.options.getString("old_name").toLowerCase();
-    const newName = interaction.options.getString("new_name")?.toLowerCase();
-    let label = interaction.options.getString("label");
+    const guildId = interaction.guild.id;
+
+    const oldName = interaction.options.getString("old_name").toLowerCase().trim();
+    const newName = interaction.options.getString("new_name")?.toLowerCase().trim();
     const role = interaction.options.getRole("role");
-
-    const colors = getColors(interaction.guild.id);
-    const existing = colors.find(c => c.name === oldName);
-    if (!existing) {
-        return interaction.reply({ content: `❌ Color **${oldName}** not found.`, flags: 64 });
-    }
-
-    // Check for name conflict if renaming
-    if (newName && colors.some(c => c.name === newName && c.name !== oldName)) {
-        return interaction.reply({ content: `❌ A color with the name **${newName}** already exists.`, flags: 64 });
-    }
+    let label = interaction.options.getString("label");
 
     // Validate label
     if (label) {
         const parsed = parseLabel(label);
         if (!parsed) {
-            return interaction.reply({ content: "❌ Invalid label. Must be a valid emoji or text (no mixing).", flags: 64 });
+            return interaction.reply({
+                content: "❌ Invalid label. Must be a valid emoji or text (no mixing).",
+                flags: 64
+            });
         }
     }
 
-    // Update the color
-    updateColor(
-        interaction.guild.id,
-        oldName,
-        role ? role.id : existing.role_id,
-        label ?? existing.label,
-        newName ?? oldName
-    );
+    try {
+        const changed = updateColor(
+            guildId,
+            oldName,
+            role?.id,          // may be undefined
+            label,             // may be undefined
+            newName            // may be undefined
+        );
 
-    // Reply immediately
-    await interaction.reply({ content: `✅ Color **${oldName}** updated successfully${newName ? ` → **${newName}**` : ""}.`, flags: 64 });
+        if (!changed) {
+            return interaction.reply({
+                content: `❌ Color **${oldName}** not found.`,
+                flags: 64
+            });
+        }
+    } catch (err) {
+        if (err.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
+            return interaction.reply({
+                content: `❌ A color with the name **${newName}** already exists.`,
+                flags: 64
+            });
+        }
 
-    // Refresh panel in the background
+        if (err.code === "SQLITE_CONSTRAINT_UNIQUE") {
+            return interaction.reply({
+                content: "❌ That role is already used by another color.",
+                flags: 64
+            });
+        }
+
+        throw err; // real bug
+    }
+
+    await interaction.reply({
+        content: `✅ Color **${oldName}** updated successfully${newName ? ` → **${newName}**` : ""}.`,
+        flags: 64
+    });
+
     refreshColorPanel(interaction.guild).catch(console.error);
 }

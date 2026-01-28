@@ -1,3 +1,4 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { requireManageRoles } from "../utils/permissions.js";
 import { generateColorListImage } from "../utils/generateColorListImage.js";
 import {
@@ -7,12 +8,12 @@ import {
     clearColorListMessages
 } from "../database/colors.js";
 
-export const data = {
-    name: "sendcolorlist",
-    description: "Send or update the color list image (admin only)"
-};
+export const data = new SlashCommandBuilder()
+    .setName("sendcolorlist")
+    .setDescription("Send or update the color list image")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
 
-export async function execute(interaction) {
+    export async function execute(interaction) {
     // 🔒 Admin-only
     if (!requireManageRoles(interaction)) {
         return interaction.reply({

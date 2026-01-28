@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
+import { Client, GatewayIntentBits, REST, Routes, Events } from "discord.js";
 import { commandList, commandMap } from "./commands/index.js";
 import { handleColorButton } from "./interactions/colorButtons.js";
 
@@ -22,7 +22,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
     }
 })();
 
-client.once("clientReady", () => {
+client.once(Events.ClientReady, (client) => {
     console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 

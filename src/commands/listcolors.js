@@ -1,10 +1,11 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { getColors } from "../database/colors.js";
 import { requireManageRoles } from "../utils/permissions.js";
 
-export const data = {
-    name: "listcolors",
-    description: "List all color roles"
-};
+export const data = new SlashCommandBuilder()
+    .setName("listcolors")
+    .setDescription("List all color roles")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
 
 export async function execute(interaction) {
     if (!requireManageRoles(interaction)) {

@@ -1,11 +1,12 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { getColors, getPanel, savePanel } from "../database/colors.js";
 import { requireManageRoles } from "../utils/permissions.js";
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder } from "discord.js";
 
-export const data = {
-    name: "colors",
-    description: "Create or update the color panel"
-};
+export const data = new SlashCommandBuilder()
+    .setName("colors")
+    .setDescription("Create or update the color panel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
 
 export async function execute(interaction) {
     if (!requireManageRoles(interaction))
