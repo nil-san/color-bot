@@ -12,41 +12,46 @@ const ERROR_COLOR = 0xed4245;      // red
 const PLEASE_WAIT = 0xFEE75C;      // yellow
 
 export async function handleColorButton(interaction) {
-    const userId = interaction.user.id;
-
-    if (active.has(userId)) {
-        return interaction.reply({
-            embeds: [{
-                color: PLEASE_WAIT,
-                description: "⏳ Please wait..."
-            }],
-            flags: 64
-        });
-    }
-
-    active.add(userId);
+    let userId;
 
     try {
-        const name = decodeURIComponent(interaction.customId.replace("color_", ""));
-        const colors = getColors(interaction.guild.id);
+        await interaction.deferUpdate();
+        userId = interaction.user.id;
 
+        if (active.has(userId)) {
+            return interaction.followUp({
+                embeds: [{
+                    color: PLEASE_WAIT,
+                    description: "⏳ Please wait..."
+                }],
+                flags: 64
+            });
+        }
+
+        active.add(userId);
+
+        const name = decodeURIComponent(
+            interaction.customId.replace("color_", "")
+        );
+
+        const colors = getColors(interaction.guild.id);
         const chosen = colors.find(c => c.name === name);
+
         if (!chosen) {
-            await interaction.reply({
+            return interaction.followUp({
                 embeds: [{
                     color: ERROR_COLOR,
                     description: "❌ Color not found."
                 }],
                 flags: 64
             });
-            return;
         }
 
         const role = interaction.guild.roles.cache.get(chosen.role_id);
         const botMember = getBotMember(interaction);
 
         if (!canManageRole(botMember, role)) {
-            return interaction.reply({
+            return interaction.followUp({
                 embeds: [{
                     color: ERROR_COLOR,
                     description: "❌ I can't assign that role."
@@ -58,7 +63,7 @@ export async function handleColorButton(interaction) {
         const member = interaction.member;
 
         if (member.roles.cache.has(role.id)) {
-            return interaction.reply({
+            return interaction.followUp({
                 embeds: [{
                     color: ERROR_COLOR,
                     description: "🎨 You already have this color."
@@ -86,12 +91,10 @@ export async function handleColorButton(interaction) {
             }
         }
 
-        // Clear warnings for roles that are now manageable
         for (const r of fixedRoles) {
             clearRoleWarning(interaction.guild.id, r.id);
         }
 
-        // Warn admins once per problematic role
         const newFailures = [];
 
         for (const r of failedRoles) {
@@ -118,9 +121,9 @@ export async function handleColorButton(interaction) {
 
         await member.roles.add(role.id);
 
-        await interaction.reply({
+        await interaction.followUp({
             embeds: [{
-                color: role?.color || SUCCESS_FALLBACK, // use actual role color or fallbac
+                color: role.color || SUCCESS_FALLBACK,
                 description: `✅ Color updated to ${role}`
             }],
             flags: 64
@@ -129,16 +132,17 @@ export async function handleColorButton(interaction) {
     } catch (err) {
         console.error("Color button error:", err);
 
-        if (!interaction.replied) {
-            await interaction.reply({
+        // safe after deferUpdate
+        try {
+            await interaction.followUp({
                 embeds: [{
                     color: ERROR_COLOR,
                     description: "❌ Something went wrong. Try again."
                 }],
                 flags: 64
             });
-        }
+        } catch {}
     } finally {
-        active.delete(userId);
+        if (userId) active.delete(userId);
     }
 }

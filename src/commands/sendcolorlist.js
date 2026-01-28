@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
 import { requireManageRoles } from "../utils/permissions.js";
 import { generateColorListImage } from "../utils/generateColorListImage.js";
 import {
@@ -13,7 +13,7 @@ export const data = new SlashCommandBuilder()
     .setDescription("Send or update the color list image")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
 
-    export async function execute(interaction) {
+export async function execute(interaction) {
     // 🔒 Admin-only
     if (!requireManageRoles(interaction)) {
         return interaction.reply({
@@ -47,35 +47,57 @@ export const data = new SlashCommandBuilder()
         const chunk = colorChunks[i];
 
         // Generate image with persistent numbering
-        const buffer = await generateColorListImage(interaction.guild, chunk, i * chunkSize);
+        const buffer = await generateColorListImage(
+            interaction.guild,
+            chunk,
+            i * chunkSize
+        );
         if (!buffer) continue;
+
+        const fileName = `colors_${i + 1}.png`;
+
+        const embed = new EmbedBuilder()
+            .setTitle("🎨 Available Colors")
+            .setColor(0x5865F2)
+            .setImage(`attachment://${fileName}`);
 
         let message;
 
         if (storedMessages[i]) {
             // Edit existing message if exists
             try {
-                const channel = await interaction.guild.channels.fetch(storedMessages[i].channel_id);
-                message = await channel.messages.fetch(storedMessages[i].message_id);
+                const channel = await interaction.guild.channels.fetch(
+                    storedMessages[i].channel_id
+                );
+                message = await channel.messages.fetch(
+                    storedMessages[i].message_id
+                );
 
                 await message.edit({
-                    files: [{ attachment: buffer, name: `colors_${i + 1}.png` }]
+                    embeds: [embed],
+                    files: [{ attachment: buffer, name: fileName }]
                 });
 
-                newMessageIds.push({ channel_id: message.channel.id, message_id: message.id });
+                newMessageIds.push({
+                    channel_id: message.channel.id,
+                    message_id: message.id
+                });
                 continue;
             } catch {
-                // Existing message no longer exists
-                // We'll send a new message and overwrite later
+                // Message missing → fall through and resend
             }
         }
 
         // Send new message
         message = await interaction.channel.send({
-            files: [{ attachment: buffer, name: `colors_${i + 1}.png` }]
+            embeds: [embed],
+            files: [{ attachment: buffer, name: fileName }]
         });
 
-        newMessageIds.push({ channel_id: message.channel.id, message_id: message.id });
+        newMessageIds.push({
+            channel_id: message.channel.id,
+            message_id: message.id
+        });
     }
 
     // Save all messages in DB (first + extras)

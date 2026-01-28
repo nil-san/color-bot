@@ -56,7 +56,7 @@ export async function execute(interaction) {
     if (!result.ok) {
         if (result.reason === "NAME_EXISTS") {
             return interaction.reply({
-                content: `❌ The color **${name}** already exists.`,
+                content: `❌ The color with **${name}** already exists.`,
                 flags: 64
             });
         }

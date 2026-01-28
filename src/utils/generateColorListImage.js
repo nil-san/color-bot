@@ -30,7 +30,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.textBaseline = "middle";
-    ctx.font = `${fontSize}px sans-serif`;
+    ctx.font = `bold ${fontSize}px sans-serif`;
 
     // Measure widest text in this chunk
     let maxTextWidth = 0;
@@ -45,7 +45,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     if (maxTextWidth > maxColumnWidth) {
         const scale = maxColumnWidth / maxTextWidth;
         fontSize = Math.floor(fontSize * scale);
-        ctx.font = `${fontSize}px sans-serif`;
+        ctx.font = `bold ${fontSize}px sans-serif`;
     }
 
     // Draw each color
