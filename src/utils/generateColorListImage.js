@@ -1,9 +1,6 @@
 import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
 import { getColors } from "../database/colors.js";
 
-// Optional: register a custom font
-// GlobalFonts.registerFromPath("./assets/Inter-Regular.ttf", "Inter");
-
 /**
  * Generates a color list image for a guild.
  * @param {Guild} guild - The Discord guild
@@ -18,7 +15,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     // Layout
     const padding = 20;
     const rowHeight = 36;
-    let fontSize = 22;
+    let fontSize = 40;
     const columns = 2;
     const columnGap = 60; // gap between columns
 
@@ -30,7 +27,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.textBaseline = "middle";
-    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.font = `bold ${fontSize}px "Nunito"`;
 
     // Measure widest text in this chunk
     let maxTextWidth = 0;
@@ -45,7 +42,7 @@ export async function generateColorListImage(guild, colorsSubset = null, offset 
     if (maxTextWidth > maxColumnWidth) {
         const scale = maxColumnWidth / maxTextWidth;
         fontSize = Math.floor(fontSize * scale);
-        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.font = `bold ${fontSize}px "Nunito"`;
     }
 
     // Draw each color

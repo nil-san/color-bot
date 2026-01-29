@@ -4,6 +4,10 @@ import { commandList, commandMap } from "./commands/index.js";
 import { handleColorButton } from "./interactions/colorButtons.js";
 import { startupCleanup } from './utils/startupCleanup.js';
 import { closeDatabase } from './database/colors.js';
+import { loadFonts } from './utils/loadFonts.js';
+
+//LOADS FONTS FIRST
+loadFonts();
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
